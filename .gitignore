@@ -1,0 +1,59 @@
+# 빌드 디렉토리
+/build/
+/build*/
+
+# CMake 빌드 아티팩트
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+install_manifest.txt
+
+# Visual Studio 관련
+*.vcxproj*
+*.sln
+*.pdb
+*.suo
+*.user
+*.userosscache
+*.ncb
+*.opensdf
+*.sdf
+*.ipch
+*.obj
+*.idb
+*.tlog
+*.log
+*.db
+
+# Mac/Linux 빌드 파일
+*.o
+*.a
+*.so
+*.dylib
+
+# Windows 실행 파일
+*.exe
+*.dll
+*.lib
+
+# 기타 빌드 결과물
+*.out
+*.app
+
+# 에디터 임시 파일
+*~
+*.swp
+.DS_Store
+.vscode/
+.idea/
+*.code-workspace
+
+# Gurobi 관련 (로그나 캐시 등)
+gurobi.log
+gurobi.env
+gurobi.lic
+
+# 실행 시 생기는 캐시 파일
+*.cache
+*.tmp
