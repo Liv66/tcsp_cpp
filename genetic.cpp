@@ -1,6 +1,7 @@
 #include "genetic.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <iostream>
 #include <random>
 #include <tuple>
@@ -24,12 +25,26 @@ int g_elite_count;
 int g_flag;
 int g_c2_pos;
 int g_p;
-vector<int> g_job_assign;
+unordered_map<int, int> g_job_assign;
 unordered_map<int, int> g_org_map;
 unordered_map<int, int> g_dest_map;
 }  // namespace
 
-void set_value(int len, int jn, const vector<int>& assign, const unordered_map<int, int>& org,
+template <typename T>
+void print(const T& t)
+{
+    std::cout << t << '\n';
+}
+
+// 여러 개 출력
+template <typename T, typename... Args>
+void print(const T& t, const Args&... args)
+{
+    std::cout << t << ' ';
+    print(args...);
+}
+
+void set_value(int len, int jn, const unordered_map<int, int>& assign, const unordered_map<int, int>& org,
                const unordered_map<int, int>& dest, int flag, int c2_pos, int p)
 {
     g_len = len;
@@ -89,8 +104,7 @@ struct Chromosome
 
     void bi_direction_fitness()
     {
-        int idx1, idx2, o, d, pos, move, hist_len, other_len, sign, count_p;
-        int sign = 0, c;
+        int idx1, idx2, o, d, pos, move, hist_len, other_len, sign = 0, c, count_p;
         // crane_idx는 gene의 idx 저장
         vector<vector<int>> crane_hist = {{}, {0}, {g_c2_pos}}, crane_jidx_hist = {{}, {}, {}},
                             crane_idx_to_jidx = {{}, {}, {}};
@@ -100,35 +114,47 @@ struct Chromosome
 
         for (int i = 0; i < this->genes.size(); i++)
         {
-            if (g_job_assign[i] == 1)
+            if (g_job_assign[this->genes[i]] == 1)
             {
                 crane_idx_to_jidx[1].push_back(i);
-                job_to_idx[this->genes[i]] = crane_idx_to_jidx[1].size();
+                job_to_idx[this->genes[i]] = crane_idx_to_jidx[1].size() - 1;
             }
             else
             {
                 crane_idx_to_jidx[2].push_back(i);
-                job_to_idx[this->genes[i]] = crane_idx_to_jidx[2].size();
+                job_to_idx[this->genes[i]] = crane_idx_to_jidx[2].size() - 1;
             }
+
             job_to_time[this->genes[i]] = 0;
         }
 
-        while (crane_finish[1] != 1 && crane_finish[2] != 1)
+        while (crane_finish[1] != 1 || crane_finish[2] != 1)
         {
             idx1 = crane_idx[1];
             idx2 = crane_idx[2];
+            print("-------------", idx1, idx2);
+
             crane_status[1] = 0;
             crane_status[2] = 0;
-            crane_jobs[1] = this->genes[crane_idx_to_jidx[1][idx1]];
+            crane_jobs[1] = crane_finish[1] != 1 ? this->genes[crane_idx_to_jidx[1][idx1]]
+                                                 : this->genes[crane_idx_to_jidx[1][idx1 - 1]];
             if ((crane_jobs[1] >= g_job_num && job_to_time[crane_jobs[1] - g_job_num] == 0) || crane_finish[1] == 1)
+            {
                 crane_status[1] = 1;
+            }
 
-            crane_jobs[2] = this->genes[crane_idx_to_jidx[2][idx2]];
+            crane_jobs[2] = crane_finish[2] != 1 ? this->genes[crane_idx_to_jidx[2][idx2]]
+                                                 : this->genes[crane_idx_to_jidx[2][idx2 - 1]];
             if ((crane_jobs[2] >= g_job_num && job_to_time[crane_jobs[2] - g_job_num] == 0) || crane_finish[2] == 1)
+            {
                 crane_status[2] = 1;
+            }
 
             if (crane_status[1] + crane_status[2] == 2)
-                throw runtime_error("wait sum is 2");
+            {
+                print("wait sum is 2");
+                abort();
+            }
 
             if (crane_hist[1].size() <= crane_hist[2].size() && crane_status[1] + crane_status[2] == 0)
                 c = 1;
@@ -139,16 +165,21 @@ struct Chromosome
             else
                 c = 1;
 
-            hist_len = crane_hist[c].size() - 1;
-            other_len = crane_hist[3 - c].size() - 1;
-            pos = crane_hist[c][hist_len];
-            o = g_org_map[crane_jobs[c]];
+            hist_len = crane_hist[c].size() - 1;       // 지금까지 작업 시간
+            other_len = crane_hist[3 - c].size() - 1;  // 상대방 작업 시간
+            pos = crane_hist[c][hist_len];             // 현재 위치
+            o = g_org_map[crane_jobs[c]];              //
             d = g_dest_map[crane_jobs[c]];
             crane_status[c] = (pos == o) ? 1 : 0;
             sign = 3 - 2 * c;
             count_p = 0;
+
+            // c, idx, crane_jobs
+            print(c, crane_idx[c], crane_jobs[c]);
+
             while (true)
             {
+                // print(crane_status[c], count_p, pos, move, d);
                 hist_len++;
                 if (crane_status[c] == 0)
                 {
@@ -165,19 +196,23 @@ struct Chromosome
                 }
 
                 // 충돌 체크
-                if (hist_len <= other_len && sign * (pos + move) >= sign * crane_hist[3 - c][other_len])
+                if (hist_len <= other_len && sign * (pos + move) >= sign * crane_hist[3 - c][hist_len])
                 {
                     // 우선순위 체크
-                    if (crane_jidx_hist[c][hist_len - 2] >= crane_jidx_hist[3 - c][other_len - 1])
+                    if (crane_jidx_hist[c][hist_len - 2] <=
+                        crane_jidx_hist[3 - c][hist_len - 2])  // jidx_hist는 1칸 작음
                     {
                         // 정상 작동, 상대방 다 꺼냄
                         pos += move;
-                        int tmp_jidx = crane_jidx_hist[3 - c][other_len - 1];  // 간섭 발생한 jidx
-                        int tmp_time = job_to_time[this->genes[tmp_jidx]];     // jidx의 끝난 시간
-                        int tmp_c_idx = job_to_idx[this->genes[tmp_jidx]];     // jidx의 인덱스
-                        int tmp_time2 =
-                            job_to_time[this->genes[crane_idx_to_jidx[3 - c][tmp_c_idx - 1]]];  // jidx 이전의 작업 끝난
-                                                                                                // 시간
+                        int tmp_jidx = crane_jidx_hist[3 - c][hist_len - 2];  // 간섭 발생한 jidx
+                        int tmp_time = job_to_time[this->genes[tmp_jidx]];    // jidx의 끝난 시간
+                        int tmp_c_idx = job_to_idx[this->genes[tmp_jidx]];    // jidx의 인덱스
+                        int tmp_time2 = tmp_c_idx >= 1
+                                            ? job_to_time[this->genes[crane_idx_to_jidx[3 - c][tmp_c_idx - 1]]]
+                                            : 0;  // jidx 이전의 작업 끝난
+                                                  // 시간
+                        print("interference occur A", 3 - c, tmp_c_idx, this->genes[tmp_jidx],
+                              crane_jidx_hist[c][hist_len - 2], crane_jidx_hist[3 - c][hist_len - 2]);
                         for (int i = tmp_time2 + 1; i <= other_len; i++)
                         {  // crane_hist 초기화
                             crane_hist[3 - c].pop_back();
@@ -207,35 +242,35 @@ struct Chromosome
                 {
                     pos += move;
                 }
-                crane_jidx_hist[c].push_back(crane_jobs[c]);
+                crane_jidx_hist[c].push_back(crane_idx_to_jidx[c][crane_idx[c]]);
                 crane_hist[c].push_back(pos);
                 if (pos == o && crane_status[c] == 0)
                 {
                     crane_status[c]++;
                 }
-                else if (pos == d && crane_status[c] == 3)
+                else if (pos == d && crane_status[c] == 2)
                 {
                     crane_status[c]++;
                 }
-                else
+                else if (crane_status[c] == 1 || crane_status[c] == 3)
                 {
                     count_p++;
-                    if (count_p == g_p && crane_status[c] == 4)
+                    if (count_p == g_p && crane_status[c] == 3)
                     {
+                        count_p = 0;
                         crane_idx[c]++;
+                        job_to_time[crane_jobs[c]] = crane_hist[c].size() - 1;
                         if (crane_idx[c] == crane_idx_to_jidx[c].size())
                         {
                             crane_finish[c] = 1;
                         }
                         break;
                     }
-                    else if (count_p == g_p && crane_status[c] == 2)
+                    else if (count_p == g_p && crane_status[c] == 1)
                     {
                         count_p = 0;
                         crane_status[c]++;
                     }
-                    else
-                        count_p++;
                 }
             }
         }
@@ -244,13 +279,16 @@ struct Chromosome
         for (int i = 0; i < min_len; i++)
         {
             if (crane_hist[1][i] >= crane_hist[2][i])
-                throw runtime_error("Interference exists");
+            {
+                print("Interference exists", i, crane_hist[1][i], crane_hist[2][i]);
+                abort();
+            }
         }
 
         vector<vector<int>> result = {{}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
         for (int i = 1; i <= 2; i++)
         {
-            result[i][0] = crane_jidx_hist[i].size();
+            result[i][0] = crane_jidx_hist[i].size() - 1;
             int tmp_job = this->genes[crane_idx_to_jidx[i][0]], tmp_pre_job;
             result[i][1] += abs(g_org_map[tmp_job] - g_dest_map[tmp_job]);
             tmp_pre_job = tmp_job;
@@ -264,9 +302,14 @@ struct Chromosome
             result[i][3] = 2 * g_p * crane_idx[i];
             result[i][4] = result[i][0] - result[i][1] - result[i][2] - result[i][3];
         }
+        result[2][2] += abs(g_c2_pos - g_org_map[this->genes[crane_idx_to_jidx[2][0]]]);
+        result[2][4] -= abs(g_c2_pos - g_org_map[this->genes[crane_idx_to_jidx[2][0]]]);
+
         makespan = max(result[1][0], result[2][0]);
 
         cout << makespan << "  " << result[1][0] << "  " << result[2][0] << endl;
+        print(result[1][0], result[1][1] + result[1][3], result[1][2], result[1][4]);
+        print(result[2][0], result[2][1] + result[2][3], result[2][2], result[2][4]);
     }
 
     void repair()
@@ -361,7 +404,8 @@ pair<Chromosome, Chromosome> pmx(const Chromosome& p1, const Chromosome& p2)
 
 vector<int> make_initial_seq(ProblemInfo info)
 {
-    vector<int> v, assign;
+    vector<int> v;
+    unordered_map<int, int> assign;
     int jn;
     if (info.flag)
     {
@@ -377,23 +421,22 @@ vector<int> make_initial_seq(ProblemInfo info)
             if ((o <= h && d <= h) || (o >= h && d >= h))
             {
                 v.push_back(i);
-                assign.push_back(c);
+                assign[i] = c;
                 mo[i] = o;
                 md[i] = d;
             }
             else
             {
                 v.push_back(i);
-                assign.push_back(c);
+                assign[i] = c;
                 v.push_back(i + jn);
-                assign.push_back(3 - c);
+                assign[i + jn] = (3 - c);
                 mo[i] = o;
                 md[i] = h;
                 mo[i + jn] = h;
                 md[i + jn] = d;
             }
         }
-
         set_value(v.size(), jn, assign, mo, md, info.flag, info.c2_pos, info.p);
     }
 
@@ -433,13 +476,19 @@ vector<Chromosome> initialize_population(const vector<int>& base_seq, int pop_si
 
 void run_genetic_algorithm(GAConfig config, ProblemInfo info)
 {
+    vector<int> sol = {0,  33, 24, 37, 28, 46, 14, 34, 23, 44, 9,  20, 25, 35, 15, 29, 4, 36,
+                       32, 12, 22, 42, 3,  13, 18, 40, 6,  30, 17, 49, 47, 19, 2,  10, 5, 21,
+                       26, 7,  11, 38, 73, 31, 48, 27, 1,  68, 8,  39, 16, 43, 41, 61, 45};
+    Chromosome zebal(sol);
+
     uniform_real_distribution<> prob(0.0, 1.0);
     set_config(config);
     vector<int> base_job = make_initial_seq(info);
-    vector<Chromosome> population = initialize_population(base_job, g_pop_size);
+    zebal.bi_direction_fitness();
+    // vector<Chromosome> population = initialize_population(base_job, g_pop_size);
     // print_vector(g_job_assign);
-    print_vector(population[0].genes);
-    cout << g_job_num;
+    // print_vector(population[0].genes);
+    // cout << g_job_num;
     // population[0].bi_direction_fitness();
     // for (int gen_idx = 0; gen_idx < g_generations; ++gen_idx)
     // {
