@@ -6,9 +6,9 @@
 #include "a.h"
 #include "assign_model.h"
 #include "genetic.h"
-
+#include "matplotlibcpp.h"
 using namespace std;
-
+namespace plt = matplotlibcpp;
 int main()
 {
     auto start = std::chrono::high_resolution_clock::now();
@@ -22,6 +22,12 @@ int main()
     for (auto& c : cities) c = {dist(gen), dist(gen)};
 
     const int p_ = 5;
+
+    std::vector<double> x = {1, 2, 3, 4};
+    std::vector<double> y = {1, 4, 9, 16};
+
+    plt::plot(x, y);
+    plt::show();
 
     vector<int> raw_org = {0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
                            0,  0,  0,  30, 20, 25, 12, 19, 14, 13, 25, 12, 31, 23, 33, 10, 32, 31, 31, 15, 30, 19,
