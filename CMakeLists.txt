@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.5)
+project(TCSP_CPP)
 
-project(gurobi-template CXX)  # C → CXX 로 변경
+option(CXX "enable C++ compilation" ON)
+enable_language(CXX)
 
-set(CMAKE_CXX_STANDARD 17)  # 11 → 17로 최신화
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
 if(NOT CMAKE_BUILD_TYPE)
@@ -10,7 +14,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-# Visual Studio 컴파일러 설정 (선택적)
+# Visual Studio에서 정적 라이브러리 사용
 if(MSVC AND MT)
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
@@ -18,23 +22,36 @@ if(MSVC AND MT)
   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /MTd")
 endif()
 
+# Gurobi 설정
 find_package(GUROBI REQUIRED)
 include_directories(${GUROBI_INCLUDE_DIRS})
 
-# 모든 .cpp 파일을 sources로 등록
-set(sources
-    main.cpp
-    a.cpp
-    assign_model.cpp
-    genetic.cpp
+# matplotlib-cpp + Python/Numpy 설정
+include_directories(
+  ${PROJECT_SOURCE_DIR}/external
+  "C:/Users/User/AppData/Local/Programs/Python/Python312/include"
+  "C:/Users/User/AppData/Local/Programs/Python/Python312/Lib/site-packages/numpy/core/include"
+)
+link_directories(
+  "C:/Users/User/AppData/Local/Programs/Python/Python312/libs"
 )
 
-add_executable(${CMAKE_PROJECT_NAME} ${sources})
+# 소스 목록
+set(sources
+  main.cpp
+  a.cpp
+  assign_model.cpp
+  genetic.cpp
+)
 
-target_link_libraries(${CMAKE_PROJECT_NAME}
-    optimized ${GUROBI_CXX_LIBRARY}
-    debug     ${GUROBI_CXX_DEBUG_LIBRARY}
-    ${GUROBI_LIBRARY}
+add_executable(${PROJECT_NAME} ${sources})
+
+# 모든 라이브러리 통합 링크
+target_link_libraries(${PROJECT_NAME}
+  optimized ${GUROBI_CXX_LIBRARY}
+  debug ${GUROBI_CXX_DEBUG_LIBRARY}
+  ${GUROBI_LIBRARY}
+  python312
 )
 
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
