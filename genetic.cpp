@@ -1,6 +1,7 @@
 #include "genetic.h"
 
 #include <algorithm>
+#include <chrono>  // ⏱ 시간 측정용
 #include <cstdlib>
 #include <iostream>
 #include <random>
@@ -28,21 +29,10 @@ int g_p;
 unordered_map<int, int> g_job_assign;
 unordered_map<int, int> g_org_map;
 unordered_map<int, int> g_dest_map;
+vector<int> g_crane_lt;
+vector<int> g_crane_pt;
+vector<int> g_crane_job_num;
 }  // namespace
-
-template <typename T>
-void print(const T& t)
-{
-    std::cout << t << '\n';
-}
-
-// 여러 개 출력
-template <typename T, typename... Args>
-void print(const T& t, const Args&... args)
-{
-    std::cout << t << ' ';
-    print(args...);
-}
 
 void print_vector(vector<int>& vec)
 {
@@ -78,7 +68,8 @@ void print_unordered_map(const unordered_map<int, int>& umap)
 }
 
 void set_value(int len, int jn, const unordered_map<int, int>& assign, const unordered_map<int, int>& org,
-               const unordered_map<int, int>& dest, int flag, int c2_pos, int p)
+               const unordered_map<int, int>& dest, int flag, int c2_pos, int p, const vector<int>& crane_lt,
+               const vector<int>& crane_pt, const vector<int>& crane_jn)
 {
     g_len = len;
     g_job_num = jn;
@@ -88,6 +79,9 @@ void set_value(int len, int jn, const unordered_map<int, int>& assign, const uno
     g_flag = flag;
     g_c2_pos = c2_pos;
     g_p = p;
+    g_crane_lt = crane_lt;
+    g_crane_pt = crane_pt;
+    g_crane_job_num = crane_jn;
 }
 
 void set_config(GAConfig config)
@@ -105,7 +99,7 @@ struct Chromosome
     vector<int> genes;
     int makespan;
 
-    // ct, lt, et, pt, wt
+    // ct, et, wt
     vector<int> crane1;
     vector<int> crane2;
 
@@ -304,7 +298,7 @@ struct Chromosome
                         count_p = 0;
                         crane_idx[c]++;
                         job_to_time[crane_jobs[c]] = crane_hist[c].size() - 1;
-                        if (crane_idx[c] == crane_idx_to_jidx[c].size())
+                        if (crane_idx[c] == g_crane_job_num[c])
                         {
                             crane_idx[c]--;
                             crane_finish[c] = 1;
@@ -331,33 +325,30 @@ struct Chromosome
             }
         }
 
-        vector<vector<int>> result = {{}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
+        vector<vector<int>> result = {{}, {0, 0, 0}, {0, 0, 0}};
         for (int i = 1; i <= 2; i++)
         {
             result[i][0] = crane_jidx_hist[i].size();
             int tmp_job = this->genes[crane_idx_to_jidx[i][0]], tmp_pre_job;
-            result[i][1] += abs(g_org_map[tmp_job] - g_dest_map[tmp_job]);
             int init_pos = i == 1 ? 0 : g_c2_pos;
-            result[i][2] += abs(init_pos - g_org_map[this->genes[crane_idx_to_jidx[i][0]]]);
+            result[i][1] += abs(init_pos - g_org_map[this->genes[crane_idx_to_jidx[i][0]]]);
             tmp_pre_job = tmp_job;
 
-            for (int j = 1; j < crane_idx_to_jidx[i].size(); j++)
+            for (int j = 1; j < g_crane_job_num[i]; j++)
             {
                 tmp_job = this->genes[crane_idx_to_jidx[i][j]];
-                result[i][1] += abs(g_org_map[tmp_job] - g_dest_map[tmp_job]);
-                result[i][2] += abs(g_org_map[tmp_job] - g_dest_map[tmp_pre_job]);
+                result[i][1] += abs(g_org_map[tmp_job] - g_dest_map[tmp_pre_job]);
                 tmp_pre_job = tmp_job;
             }
-            result[i][3] = 2 * g_p * crane_idx_to_jidx[i].size();
-            result[i][4] = result[i][0] - result[i][1] - result[i][2] - result[i][3];
+            result[i][2] = result[i][0] - result[i][1] - g_crane_lt[i] - g_crane_pt[i];
         }
 
         makespan = max(result[1][0], result[2][0]);
         if (debug)
         {
             print("makespan", makespan, "ct1", result[1][0], "ct2", result[2][0]);
-            print(result[1][0], result[1][1] + result[1][3], result[1][2], result[1][4]);
-            print(result[2][0], result[2][1] + result[2][3], result[2][2], result[2][4]);
+            print(result[1][0], g_crane_lt[1] + g_crane_pt[1], result[1][2], result[1][4]);
+            print(result[2][0], g_crane_lt[2] + g_crane_pt[2], result[2][2], result[2][4]);
             print("====================================");
             // print_vector(crane_hist[1]);
             // print_vector(crane_hist[2]);
@@ -463,13 +454,14 @@ vector<int> make_initial_seq(ProblemInfo info)
 {
     vector<int> v;
     unordered_map<int, int> assign;
-    int jn;
+    int job_num;
+    vector<int> crane_lt = {0, 0, 0}, crane_pt = {0, 0, 0}, crane_job_num = {0, 0, 0};
     if (info.flag)
     {
-        jn = info.raw_dest.size();
+        job_num = info.raw_dest.size();
         unordered_map<int, int> mo;
         unordered_map<int, int> md;
-        for (int i = 0; i < jn; ++i)
+        for (int i = 0; i < job_num; ++i)
         {
             int o = info.raw_org[i];
             int d = info.raw_dest[i];
@@ -481,20 +473,29 @@ vector<int> make_initial_seq(ProblemInfo info)
                 assign[i] = c;
                 mo[i] = o;
                 md[i] = d;
+                crane_lt[c] += abs(o - d);
+                crane_pt[c] += 2 * info.p;
+                crane_job_num[c]++;
             }
             else
             {
                 v.push_back(i);
                 assign[i] = c;
-                v.push_back(i + jn);
-                assign[i + jn] = (3 - c);
+                v.push_back(i + job_num);
+                assign[i + job_num] = (3 - c);
                 mo[i] = o;
                 md[i] = h;
-                mo[i + jn] = h;
-                md[i + jn] = d;
+                crane_lt[c] += abs(o - h);
+                crane_pt[c] += 2 * info.p;
+                mo[i + job_num] = h;
+                md[i + job_num] = d;
+                crane_lt[3 - c] += abs(h - d);
+                crane_pt[3 - c] += 2 * info.p;
+                crane_job_num[c]++;
+                crane_job_num[3 - c]++;
             }
         }
-        set_value(v.size(), jn, assign, mo, md, info.flag, info.c2_pos, info.p);
+        set_value(v.size(), job_num, assign, mo, md, info.flag, info.c2_pos, info.p, crane_lt, crane_pt, crane_job_num);
     }
 
     return v;
@@ -514,8 +515,9 @@ vector<Chromosome> initialize_population(const vector<int>& base_seq, int pop_si
     return population;
 }
 
-void run_genetic_algorithm(GAConfig config, ProblemInfo info)
+GAresult run_genetic_algorithm(GAConfig config, ProblemInfo info)
 {
+    auto start = chrono::high_resolution_clock::now();
     uniform_real_distribution<> prob(0.0, 1.0);
     set_config(config);
     vector<int> base_job = make_initial_seq(info);
@@ -536,7 +538,7 @@ void run_genetic_algorithm(GAConfig config, ProblemInfo info)
     {
         vector<Chromosome> sorted = population;
         sort(sorted.begin(), sorted.end());
-        print("Gen", gen_idx, "best_makespan", sorted[0].makespan);
+        // print("Gen", gen_idx, "best_makespan", sorted[0].makespan);
         vector<Chromosome> new_pop;
         for (int i = 0; i < g_elite_count; ++i) new_pop.push_back(sorted[i]);
 
@@ -580,8 +582,16 @@ void run_genetic_algorithm(GAConfig config, ProblemInfo info)
     }
     sort(population.begin(), population.end());
     Chromosome best_sol = population[0];
-    print("result", best_sol.makespan, "/ ct1", best_sol.crane1[0], best_sol.crane1[1] + best_sol.crane1[3],
-          best_sol.crane1[2], best_sol.crane1[4], "/ ct2", best_sol.crane2[0], best_sol.crane2[1] + best_sol.crane2[3],
-          best_sol.crane2[2]);
-    print_vector(best_sol.genes);
+    // print("result", best_sol.makespan, "/ ct1", best_sol.crane1[0], g_crane_lt[1] + g_crane_pt[1],
+    // best_sol.crane1[1],
+    //       best_sol.crane1[2], "/ ct2", best_sol.crane2[0], g_crane_lt[2] + g_crane_pt[2], best_sol.crane2[1],
+    //       best_sol.crane2[2]);
+    // print_vector(best_sol.genes);
+    auto end = chrono::high_resolution_clock::now();
+    chrono::duration<double> elapsed = end - start;
+    // print(best_sol.makespan);
+    GAresult ga_result(best_sol.makespan, best_sol.crane1[0], g_crane_lt[1], best_sol.crane1[1], g_crane_pt[1],
+                       best_sol.crane1[2], best_sol.crane2[0], g_crane_lt[2], best_sol.crane2[1], g_crane_pt[2],
+                       best_sol.crane2[2], elapsed.count());
+    return ga_result;
 }

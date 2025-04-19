@@ -1,8 +1,8 @@
 // genetic.h
 #pragma once
+#include <string>
 #include <utility>
 #include <vector>
-
 
 using namespace std;
 struct GAConfig
@@ -39,4 +39,58 @@ struct ProblemInfo
     }
 };
 
-void run_genetic_algorithm(GAConfig config, ProblemInfo info);
+struct ResultRow
+{
+    string title;
+
+    int mip_bt, mip_ct1, mip_ct2;
+    int makespan;
+    int ct1, ct1_lt, ct1_et, ct1_pt, ct1_wt;
+    int ct2, ct2_lt, ct2_et, ct2_pt, ct2_wt;
+    int num_handover;
+    double time;
+    int type;  // 0 : 우리 방식, 1 : no handover, 2 : best handshake, 3 : handshake
+    int handshake;
+};
+
+struct GAresult
+{
+    int makespan;
+    int ct1, lt1, et1, pt1, wt1;
+    int ct2, lt2, et2, pt2, wt2;
+    double time;
+
+    GAresult(int makespan, int ct1, int lt1, int et1, int pt1, int wt1, int ct2, int lt2, int et2, int pt2, int wt2,
+             double time)
+        : makespan(makespan),
+          ct1(ct1),
+          lt1(lt1),
+          et1(et1),
+          pt1(pt1),
+          wt1(wt1),
+          ct2(ct2),
+          lt2(lt2),
+          et2(et2),
+          pt2(pt2),
+          wt2(wt2),
+          time(time)
+    {
+    }
+};
+
+GAresult run_genetic_algorithm(GAConfig config, ProblemInfo info);
+template <typename T>
+void print(const T& t)
+{
+    std::cout << t << '\n';
+}
+
+// 여러 개 출력 (재귀적 처리)
+template <typename T, typename... Args>
+void print(const T& t, const Args&... args)
+{
+    std::cout << t << ' ';
+    print(args...);
+}
+
+void print_vector(vector<int>& vec);

@@ -195,7 +195,15 @@ Mip_result run_mip(const vector<int>& raw_org, const vector<int>& raw_dest, cons
             cout << split_count << endl;
             cout << "------------------" << endl;
         }
-        Mip_result result(h_list_result, ct1, ct2);
+        int count = 0;
+        for (int i = 0; i < num_jobs; ++i)
+        {
+            int val1 = static_cast<int>(round(p[{1, i}].get(GRB_DoubleAttr_X)));
+            int val2 = static_cast<int>(round(p[{2, i}].get(GRB_DoubleAttr_X)));
+            if (val1 == val2)
+                count++;
+        }
+        Mip_result result(h_list_result, ct1, ct2, count);
         return result;
     }
     catch (GRBException e)

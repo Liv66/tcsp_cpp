@@ -13,6 +13,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "C++ standard is ${CMAKE_CXX_STANDARD}")
 
 # Visual Studio에서 정적 라이브러리 사용
 if(MSVC AND MT)
