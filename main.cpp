@@ -44,7 +44,7 @@ int main()
         int tournament_size;
         int elite_count;
     */
-    GAConfig config(100, 300, 0.6, 0.01, 4, 2);
+    GAConfig config(250, 300, 0.6, 0.01, 6, 2);
     run_genetic_algorithm(config, info);
 
     auto end = chrono::high_resolution_clock::now();

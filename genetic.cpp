@@ -179,7 +179,14 @@ struct Chromosome
 
             if (crane_status[1] + crane_status[2] == 2)
             {
+                print("idx", idx1, idx2);
+                print("jidx", crane_idx_to_jidx[1][idx1], crane_idx_to_jidx[2][idx2]);
+                print("crane_jobs", crane_jobs[1], crane_jobs[2]);
+                print("g_job_num", g_job_num);
+                print("job_to_time", job_to_time[crane_jobs[1] - g_job_num], job_to_time[crane_jobs[22] - g_job_num]);
+                print("finish", crane_finish[1], crane_finish[2]);
                 print("wait sum is 2");
+                print_vector(this->genes);
                 abort();
             }
 
@@ -319,6 +326,7 @@ struct Chromosome
             if (crane_hist[1][i] >= crane_hist[2][i])
             {
                 print("Interference exists", i, crane_hist[1][i], crane_hist[2][i]);
+                print_vector(this->genes);
                 abort();
             }
         }
@@ -515,9 +523,9 @@ void run_genetic_algorithm(GAConfig config, ProblemInfo info)
     int debug = 0;
     if (debug)
     {
-        vector<int> sol = {19, 5,  18, 43, 32, 31, 29, 12, 48, 2,  25, 38, 34, 69, 24, 9,  16, 37,
-                           47, 41, 35, 1,  23, 45, 28, 6,  21, 0,  22, 13, 11, 46, 36, 42, 30, 3,
-                           40, 33, 17, 8,  44, 26, 15, 49, 50, 20, 7,  14, 10, 4,  27, 39, 56};
+        vector<int> sol = {27, 56, 2,  16, 38, 10, 33, 43, 32, 46, 5,  7,  15, 30, 11, 12, 18, 23,
+                           44, 26, 49, 3,  37, 17, 47, 0,  22, 9,  40, 24, 28, 39, 19, 50, 1,  69,
+                           6,  48, 25, 42, 21, 31, 45, 34, 35, 20, 8,  13, 41, 4,  29, 14, 36};
         Chromosome zebal(sol);
         zebal.bi_direction_fitness(1);
         abort();
@@ -546,8 +554,10 @@ void run_genetic_algorithm(GAConfig config, ProblemInfo info)
                 c1.bi_direction_fitness();
                 new_pop.push_back(c1);
                 if (new_pop.size() < g_pop_size)
+                {
                     c2.repair();
-                c2.bi_direction_fitness();
+                    c2.bi_direction_fitness();
+                }
                 new_pop.push_back(c2);
             }
             else
@@ -558,8 +568,10 @@ void run_genetic_algorithm(GAConfig config, ProblemInfo info)
                 p1.bi_direction_fitness();
                 new_pop.push_back(p1);
                 if (new_pop.size() < g_pop_size)
+                {
                     p2.repair();
-                p2.bi_direction_fitness();
+                    p2.bi_direction_fitness();
+                }
                 new_pop.push_back(p2);
             }
         }
