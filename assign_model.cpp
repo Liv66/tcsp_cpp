@@ -130,6 +130,12 @@ Mip_result run_mip(const vector<int>& raw_org, const vector<int>& raw_dest, cons
             model.addConstr(2 * c_sum + 2 * p_ * p_sum <= z);
         }
 
+        for (int j = 1; j < B; j++)
+        {
+            model.addConstr(B * c[{1, j - 1}] >= c[{1, j}]);
+            model.addConstr(c[{2, j - 1}] <= B * c[{2, j}]);
+        }
+
         model.setObjective(GRBLinExpr(z), GRB_MINIMIZE);
         model.optimize();
 
