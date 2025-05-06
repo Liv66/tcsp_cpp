@@ -103,22 +103,18 @@ struct Chromosome
     vector<int> crane1;
     vector<int> crane2;
 
-    Chromosome(vector<int> g) : genes(move(g))
-    {
-        this->repair();
-        this->bi_direction_fitness();
-    }
+    Chromosome(vector<int> g) : genes(move(g)) {}
     Chromosome() = default;
 
-    void mutate(double mutation_rate)
+    void mutate(mt19937_64& rng)
     {
         uniform_real_distribution<> prob(0.0, 1.0);
         uniform_int_distribution<> index_dist(0, g_len - 2);  // j ≠ i 보장
         for (int i = 0; i < g_len; ++i)
         {
-            if (prob(random_gen) < mutation_rate)
+            if (prob(rng) < g_mutation_rate)
             {
-                int j = index_dist(random_gen);
+                int j = index_dist(rng);
                 if (j >= i)
                     ++j;
                 swap(genes[i], genes[j]);
@@ -128,6 +124,7 @@ struct Chromosome
 
     void bi_direction_fitness(int debug = 0)
     {
+        this->repair();
         int idx1, idx2, o, d, pos, move, hist_len, other_len, sign = 0, c, count_p;
         // crane_idx는 gene의 idx 저장
         vector<vector<int>> crane_hist = {{}, {0}, {g_c2_pos}}, crane_jidx_hist = {{}, {}, {}},
@@ -515,31 +512,35 @@ vector<Chromosome> initialize_population(const vector<int>& base_seq, int pop_si
     return population;
 }
 
+void evaluate_population(vector<Chromosome>& population)
+{
+    size_t base_seed = random_device{}();
+
+#pragma omp parallel for schedule(static, 100)  // chunk 256↑ 실측 조정
+    for (int i = 0; i < population.size(); ++i)
+    {
+        if (i > 0)
+        {
+            thread_local std::mt19937_64 rng(base_seed * (i + 2));
+            population[i].mutate(rng);
+        }
+        population[i].bi_direction_fitness();
+    }
+}
+
 GAresult run_genetic_algorithm(GAConfig config, ProblemInfo info)
 {
     auto start = chrono::high_resolution_clock::now();
     uniform_real_distribution<> prob(0.0, 1.0);
     set_config(config);
     vector<int> base_job = make_initial_seq(info);
-
-    int debug = 0;
-    if (debug)
-    {
-        vector<int> sol = {27, 56, 2,  16, 38, 10, 33, 43, 32, 46, 5,  7,  15, 30, 11, 12, 18, 23,
-                           44, 26, 49, 3,  37, 17, 47, 0,  22, 9,  40, 24, 28, 39, 19, 50, 1,  69,
-                           6,  48, 25, 42, 21, 31, 45, 34, 35, 20, 8,  13, 41, 4,  29, 14, 36};
-        Chromosome zebal(sol);
-        zebal.bi_direction_fitness(1);
-        abort();
-    }
-
     vector<Chromosome> population = initialize_population(base_job, g_pop_size);
     for (int gen_idx = 0; gen_idx < g_generations; ++gen_idx)
     {
+        evaluate_population(population);
         vector<Chromosome> sorted = population;
-        sort(sorted.begin(), sorted.end());
-        // print("Gen", gen_idx, "best_makespan", sorted[0].makespan);
         vector<Chromosome> new_pop;
+        sort(sorted.begin(), sorted.end());
         for (int i = 0; i < g_elite_count; ++i) new_pop.push_back(sorted[i]);
 
         while (new_pop.size() < g_pop_size)
@@ -550,46 +551,31 @@ GAresult run_genetic_algorithm(GAConfig config, ProblemInfo info)
             if (prob(random_gen) < g_crossover_rate)
             {
                 auto [c1, c2] = pmx(p1, p2);
-                c1.mutate(g_mutation_rate);
-                c2.mutate(g_mutation_rate);
-                c1.repair();
-                c1.bi_direction_fitness();
+
                 new_pop.push_back(c1);
                 if (new_pop.size() < g_pop_size)
                 {
-                    c2.repair();
-                    c2.bi_direction_fitness();
+                    new_pop.push_back(c2);
                 }
-                new_pop.push_back(c2);
             }
             else
             {
-                p1.mutate(g_mutation_rate);
-                p2.mutate(g_mutation_rate);
-                p1.repair();
-                p1.bi_direction_fitness();
                 new_pop.push_back(p1);
                 if (new_pop.size() < g_pop_size)
                 {
-                    p2.repair();
-                    p2.bi_direction_fitness();
+                    new_pop.push_back(p2);
                 }
-                new_pop.push_back(p2);
             }
         }
-
         population = new_pop;
     }
+    evaluate_population(population);
     sort(population.begin(), population.end());
     Chromosome best_sol = population[0];
-    // print("result", best_sol.makespan, "/ ct1", best_sol.crane1[0], g_crane_lt[1] + g_crane_pt[1],
-    // best_sol.crane1[1],
-    //       best_sol.crane1[2], "/ ct2", best_sol.crane2[0], g_crane_lt[2] + g_crane_pt[2], best_sol.crane2[1],
-    //       best_sol.crane2[2]);
-    // print_vector(best_sol.genes);
+
     auto end = chrono::high_resolution_clock::now();
     chrono::duration<double> elapsed = end - start;
-    // print(best_sol.makespan);
+
     GAresult ga_result(best_sol.makespan, best_sol.crane1[0], g_crane_lt[1], best_sol.crane1[1], g_crane_pt[1],
                        best_sol.crane1[2], best_sol.crane2[0], g_crane_lt[2], best_sol.crane2[1], g_crane_pt[2],
                        best_sol.crane2[2], elapsed.count());

@@ -10,10 +10,10 @@
 #include "a.h"
 #include "assign_model.h"
 #include "genetic.h"
-#include "matplotlibcpp.h"
+// #include "matplotlibcpp.h"
 
 using namespace std;
-namespace plt = matplotlibcpp;
+
 void append_result_to_csv(const string& filename, const ResultRow& row)
 {
     bool file_exists = filesystem::exists(filename);
@@ -64,7 +64,6 @@ int main()
             string new_title = job.name + "_p_" + to_string(p);
             // vector<int> raw_org = job.raw_org;
             // vector<int> raw_dest = job.raw_dest;
-
             vector<int> raw_org = {0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
                                    0,  0,  0,  0,  0,  0,  0,  0,  30, 20, 25, 12, 19, 14, 13, 25, 12,
                                    31, 23, 33, 10, 32, 31, 31, 15, 30, 19, 25, 34, 18, 19, 26, 30, 33,
@@ -75,12 +74,12 @@ int main()
                                     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  40,
                                     40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40,
                                     40, 40, 40, 40, 40, 40, 40, 30, 34, 20, 33, 20, 16, 30, 34, 35, 13};
-            p = 1;
 
-            Mip_result mip_result = run_mip(raw_org, raw_dest, p, 1);
-            abort();
+            Mip_result mip_result = run_mip(raw_org, raw_dest, p);
             ProblemInfo info(raw_org, raw_dest, mip_result.h_list, p, 41);
-
+            print_vector(raw_org);
+            print_vector(raw_dest);
+            print(p, mip_result.BT, mip_result.CT1, mip_result.CT2);
             for (int i = 0; i < 1; i++)
             {
                 GAresult ga_result = run_genetic_algorithm(config, info);
@@ -104,7 +103,9 @@ int main()
                                         ga_result.time,
                                         type,
                                         0};
-                append_result_to_csv("results6.csv", row_result);
+                print(ga_result.makespan);
+                abort();
+                // append_result_to_csv("results.csv", row_result);
             }
         }
         auto end = chrono::high_resolution_clock::now();

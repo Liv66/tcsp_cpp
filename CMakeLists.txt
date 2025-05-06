@@ -46,6 +46,7 @@ set(sources
 )
 
 add_executable(${PROJECT_NAME} ${sources})
+find_package(OpenMP REQUIRED)
 
 # 모든 라이브러리 통합 링크
 target_link_libraries(${PROJECT_NAME}
@@ -53,7 +54,11 @@ target_link_libraries(${PROJECT_NAME}
   debug ${GUROBI_CXX_DEBUG_LIBRARY}
   ${GUROBI_LIBRARY}
   python312
+  OpenMP::OpenMP_CXX
 )
+
+
+
 
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
   include(FeatureSummary)

@@ -13,7 +13,7 @@ using namespace std;
 
 Mip_result run_mip(const vector<int>& raw_org, const vector<int>& raw_dest, const int p_, int log)
 {
-    const int B = 40;
+    const int B = 41;
 
     map<int, vector<int>> a, b;
     map<int, int> n, m;
@@ -39,7 +39,7 @@ Mip_result run_mip(const vector<int>& raw_org, const vector<int>& raw_dest, cons
             for (int j = org; j < dest; ++j) tmp[j] = 1;
             a[i] = tmp;
         }
-        h_list.push_back((org == 0 || dest == 0) ? 40 : 0);
+        h_list.push_back((org == 0 || dest == 0) ? 41 : 0);
     }
 
     try

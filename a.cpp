@@ -29,7 +29,7 @@ vector<JobInstance> read_job_instances(const string& filename)
     ifstream file(filename);
     if (!file.is_open())
     {
-        cerr << "Failed to open file\n";
+        cerr << "Failed to open job file\n";
         return instances;
     }
 
