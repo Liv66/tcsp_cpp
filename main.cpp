@@ -1,3 +1,6 @@
+#include <omp.h>
+
+#include <array>
 #include <chrono>  // ⏱ 시간 측정용
 #include <filesystem>
 #include <fstream>
@@ -10,6 +13,7 @@
 #include "a.h"
 #include "assign_model.h"
 #include "genetic.h"
+
 // #include "matplotlibcpp.h"
 
 using namespace std;
@@ -46,12 +50,37 @@ void append_result_to_csv(const string& filename, const ResultRow& row)
     file.close();
 }
 
+int run(const string& new_title, const GAConfig& config, const Mip_result& mip_result, const vector<int>& raw_org,
+        const vector<int>& raw_dest, const vector<int>& h_list, int p, int B, int type, int iter, int h_location = 0)
+{
+    ProblemInfo info(raw_org, raw_dest, h_list, p, B);
+
+    int acc = 0;
+
+    for (int i = 0; i < iter; i++)
+    {
+        GAresult ga_result = run_genetic_algorithm(config, info);
+        ResultRow row_result = {new_title,          mip_result.BT, mip_result.CT1, mip_result.CT2,
+                                ga_result.makespan, ga_result.ct1, ga_result.lt1,  ga_result.et1,
+                                ga_result.pt1,      ga_result.wt1, ga_result.ct2,  ga_result.lt2,
+                                ga_result.et2,      ga_result.pt2, ga_result.wt2,  ga_result.num_handover,
+                                ga_result.time,     type,          h_location};
+
+        append_result_to_csv("results2.csv", row_result);
+        acc += ga_result.makespan;
+    }
+    return acc / iter;
+}
+
 int main()
 {
+    omp_set_num_threads(8);
     auto start = chrono::high_resolution_clock::now();
     vector<int> p_list = {1, 5, 10, 25};
     auto instances = read_job_instances("job_instances.csv");
-    GAConfig config(250, 300, 0.6, 0.01, 6, 2);
+    GAConfig config(250, 300, 0.6, 0.05, 4, 1);
+    int B = 41;
+    int iter = 20;
 
     int type = 0;
     for (const auto& job : instances)
@@ -62,58 +91,46 @@ int main()
         for (auto p : p_list)
         {
             string new_title = job.name + "_p_" + to_string(p);
-            // vector<int> raw_org = job.raw_org;
-            // vector<int> raw_dest = job.raw_dest;
-            vector<int> raw_org = {0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-                                   0,  0,  0,  0,  0,  0,  0,  0,  30, 20, 25, 12, 19, 14, 13, 25, 12,
-                                   31, 23, 33, 10, 32, 31, 31, 15, 30, 19, 25, 34, 18, 19, 26, 30, 33,
-                                   17, 26, 16, 12, 34, 24, 23, 21, 11, 16, 30, 28, 15, 19, 29, 16, 10,
-                                   24, 10, 25, 35, 17, 10, 30, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40};
-            vector<int> raw_dest = {33, 8,  25, 25, 7,  37, 25, 19, 36, 15, 19, 32, 16, 13, 15, 10, 5,
-                                    30, 33, 10, 13, 24, 8,  26, 38, 0,  0,  0,  0,  0,  0,  0,  0,  0,
-                                    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  40,
-                                    40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40,
-                                    40, 40, 40, 40, 40, 40, 40, 30, 34, 20, 33, 20, 16, 30, 34, 35, 13};
+            vector<int> raw_org = job.raw_org;
+            vector<int> raw_dest = job.raw_dest;
 
-            Mip_result mip_result = run_mip(raw_org, raw_dest, p);
-            ProblemInfo info(raw_org, raw_dest, mip_result.h_list, p, 41);
-            print_vector(raw_org);
-            print_vector(raw_dest);
-            print(p, mip_result.BT, mip_result.CT1, mip_result.CT2);
-            for (int i = 0; i < 1; i++)
+            Mip_result mip_result = run_mip(raw_org, raw_dest, p, B);
+            // type = 0;
+            // run(new_title, config, mip_result, raw_org, raw_dest, mip_result.h_list, p, B, type, iter);
+            type = 1;
+            vector<int> h_list;
+            for (size_t i = 0; i < raw_org.size(); ++i)
             {
-                GAresult ga_result = run_genetic_algorithm(config, info);
-
-                ResultRow row_result = {new_title,
-                                        mip_result.BT,
-                                        mip_result.CT1,
-                                        mip_result.CT2,
-                                        ga_result.makespan,
-                                        ga_result.ct1,
-                                        ga_result.lt1,
-                                        ga_result.et1,
-                                        ga_result.pt1,
-                                        ga_result.wt1,
-                                        ga_result.ct2,
-                                        ga_result.lt2,
-                                        ga_result.et2,
-                                        ga_result.pt2,
-                                        ga_result.wt2,
-                                        mip_result.num_handover,
-                                        ga_result.time,
-                                        type,
-                                        0};
-                print(ga_result.makespan);
-                abort();
-                // append_result_to_csv("results.csv", row_result);
+                if (raw_org[i] == 0 || raw_dest[i] == 0)
+                    h_list.push_back(B);
+                else
+                    h_list.push_back(0);
             }
+            run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, iter);
+
+            type = 3;
+            int best_h = 0, best_v = 99999, tmp;
+            for (int i = 0; i < 10; i++)
+            {
+                h_list = vector(raw_dest.size(), i + 13);
+                tmp = run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, 10, i + 13);
+                if (tmp < best_v)
+                {
+                    best_v = tmp;
+                    best_h = i;
+                }
+            }
+
+            type = 2;
+            h_list = vector(raw_dest.size(), best_h + 13);
+            run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, iter - 10, best_h + 13);
         }
         auto end = chrono::high_resolution_clock::now();
         chrono::duration<double> elapsed = end - start2;
-        cout << setprecision(2) << elapsed.count() << " seconds\n";
+        std::cout << setprecision(2) << elapsed.count() << " seconds\n";
     }
     auto end = chrono::high_resolution_clock::now();
     chrono::duration<double> elapsed = end - start;
-    cout << "\n[Execution Time] " << setprecision(2) << elapsed.count() << " seconds\n";
+    std::cout << "\n[Execution Time] " << setprecision(2) << elapsed.count() << " seconds\n";
     return 0;
 }

@@ -516,7 +516,7 @@ void evaluate_population(vector<Chromosome>& population)
 {
     size_t base_seed = random_device{}();
 
-#pragma omp parallel for schedule(static, 100)  // chunk 256↑ 실측 조정
+#pragma omp parallel for schedule(static, 50)  // chunk 256↑ 실측 조정
     for (int i = 0; i < population.size(); ++i)
     {
         if (i > 0)
@@ -578,6 +578,6 @@ GAresult run_genetic_algorithm(GAConfig config, ProblemInfo info)
 
     GAresult ga_result(best_sol.makespan, best_sol.crane1[0], g_crane_lt[1], best_sol.crane1[1], g_crane_pt[1],
                        best_sol.crane1[2], best_sol.crane2[0], g_crane_lt[2], best_sol.crane2[1], g_crane_pt[2],
-                       best_sol.crane2[2], elapsed.count());
+                       best_sol.crane2[2], g_len - g_job_num, elapsed.count());
     return ga_result;
 }

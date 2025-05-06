@@ -32,7 +32,7 @@ struct ProblemInfo
 
     // 생성자
     ProblemInfo(const vector<int>& raw_org, const vector<int>& raw_dest, const vector<int>& h_list, int p = 0,
-                int c2_pos = 40)
+                int c2_pos = 41)
         : raw_org(raw_org), raw_dest(raw_dest), h_list(h_list), p(p), c2_pos(c2_pos)
     {
         flag = h_list.empty() ? 0 : 1;
@@ -58,10 +58,11 @@ struct GAresult
     int makespan;
     int ct1, lt1, et1, pt1, wt1;
     int ct2, lt2, et2, pt2, wt2;
+    int num_handover;
     double time;
 
     GAresult(int makespan, int ct1, int lt1, int et1, int pt1, int wt1, int ct2, int lt2, int et2, int pt2, int wt2,
-             double time)
+             int num_handover, double time)
         : makespan(makespan),
           ct1(ct1),
           lt1(lt1),
@@ -73,6 +74,7 @@ struct GAresult
           et2(et2),
           pt2(pt2),
           wt2(wt2),
+          num_handover(num_handover),
           time(time)
     {
     }

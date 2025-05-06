@@ -20,4 +20,4 @@ struct Mip_result
     }
 };
 
-Mip_result run_mip(const vector<int>& raw_org, const vector<int>& raw_dest, const int p_, int log = 0);
+Mip_result run_mip(const vector<int>& raw_org, const vector<int>& raw_dest, const int p_, const int B, int log = 0);
