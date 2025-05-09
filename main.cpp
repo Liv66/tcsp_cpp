@@ -66,7 +66,7 @@ int run(const string& new_title, const GAConfig& config, const Mip_result& mip_r
                                 ga_result.et2,      ga_result.pt2, ga_result.wt2,  ga_result.num_handover,
                                 ga_result.time,     type,          h_location};
 
-        append_result_to_csv("results2.csv", row_result);
+        append_result_to_csv("results_fix_hs.csv", row_result);
         acc += ga_result.makespan;
     }
     return acc / iter;
@@ -74,13 +74,13 @@ int run(const string& new_title, const GAConfig& config, const Mip_result& mip_r
 
 int main()
 {
-    omp_set_num_threads(8);
+    omp_set_num_threads(12);
     auto start = chrono::high_resolution_clock::now();
-    vector<int> p_list = {1, 5, 10, 25};
+    vector<int> p_list = {1, 5, 10, 20};
     auto instances = read_job_instances("job_instances.csv");
     GAConfig config(250, 300, 0.6, 0.05, 4, 1);
     int B = 41;
-    int iter = 20;
+    int iter = 100;
 
     int type = 0;
     for (const auto& job : instances)
@@ -97,23 +97,23 @@ int main()
             Mip_result mip_result = run_mip(raw_org, raw_dest, p, B);
             // type = 0;
             // run(new_title, config, mip_result, raw_org, raw_dest, mip_result.h_list, p, B, type, iter);
-            type = 1;
+            // type = 1;
             vector<int> h_list;
-            for (size_t i = 0; i < raw_org.size(); ++i)
-            {
-                if (raw_org[i] == 0 || raw_dest[i] == 0)
-                    h_list.push_back(B);
-                else
-                    h_list.push_back(0);
-            }
-            run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, iter);
+            // for (size_t i = 0; i < raw_org.size(); ++i)
+            // {
+            //     if (raw_org[i] == 0 || raw_dest[i] == 0)
+            //         h_list.push_back(B);
+            //     else
+            //         h_list.push_back(0);
+            // }
+            // run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, iter);
 
             type = 3;
             int best_h = 0, best_v = 99999, tmp;
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 21; i++)
             {
-                h_list = vector(raw_dest.size(), i + 13);
-                tmp = run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, 10, i + 13);
+                h_list = vector(raw_dest.size(), i + 7);
+                tmp = run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, 20, i + 7);
                 if (tmp < best_v)
                 {
                     best_v = tmp;
@@ -122,8 +122,8 @@ int main()
             }
 
             type = 2;
-            h_list = vector(raw_dest.size(), best_h + 13);
-            run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, iter - 10, best_h + 13);
+            h_list = vector(raw_dest.size(), best_h + 7);
+            run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, iter, best_h + 7);
         }
         auto end = chrono::high_resolution_clock::now();
         chrono::duration<double> elapsed = end - start2;

@@ -1,0 +1,6 @@
+results_fix에서 type 2, 3지우고 results_fix_hs와 합치기
+
+type0, 1에 대해 50번씩 더 돌려야 함
+
+
+20개의 인스턴스?
