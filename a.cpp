@@ -54,6 +54,8 @@ vector<JobInstance> read_job_instances(const string& filename)
         size_t second_quote = line.find('"', first_quote + 1);
         size_t third_quote = line.find('"', second_quote + 1);
         size_t fourth_quote = line.find('"', third_quote + 1);
+        size_t fifth_quote = line.find(',', fourth_quote + 1);
+        size_t sixth_quote = line.find(',', fifth_quote + 1);
 
         if (first_quote == string::npos || second_quote == string::npos || third_quote == string::npos ||
             fourth_quote == string::npos)
@@ -64,9 +66,15 @@ vector<JobInstance> read_job_instances(const string& filename)
 
         string raw_org_str = line.substr(first_quote + 1, second_quote - first_quote - 1);
         string raw_dest_str = line.substr(third_quote + 1, fourth_quote - third_quote - 1);
+        string p_str = line.substr(fifth_quote + 1, sixth_quote - fifth_quote - 1);
+        string h_str = line.substr(sixth_quote + 1, 1);
+        int p = stoi(p_str);
+        int h = stoi(h_str);
 
         instance.raw_org = parse_csv_list(raw_org_str);
         instance.raw_dest = parse_csv_list(raw_dest_str);
+        instance.best_h = h;
+        instance.p = p;
 
         instances.push_back(instance);
     }

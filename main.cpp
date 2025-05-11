@@ -66,9 +66,12 @@ int run(const string& new_title, const GAConfig& config, const Mip_result& mip_r
                                 ga_result.et2,      ga_result.pt2, ga_result.wt2,  ga_result.num_handover,
                                 ga_result.time,     type,          h_location};
 
-        append_result_to_csv("results_fix_hs.csv", row_result);
+        print(ga_result.makespan);
+
+        // append_result_to_csv("results3.csv", row_result);
         acc += ga_result.makespan;
     }
+    abort();
     return acc / iter;
 }
 
@@ -77,57 +80,77 @@ int main()
     omp_set_num_threads(12);
     auto start = chrono::high_resolution_clock::now();
     vector<int> p_list = {1, 5, 10, 20};
-    auto instances = read_job_instances("job_instances.csv");
+
+    auto instances = read_job_instances("job_instances3.csv");
     GAConfig config(250, 300, 0.6, 0.05, 4, 1);
     int B = 41;
-    int iter = 100;
-
-    int type = 0;
+    int iter = 50;
+    int p = 0;
+    int type, cnt = 0;
+    auto start2 = chrono::high_resolution_clock::now();
     for (const auto& job : instances)
     {
-        auto start2 = chrono::high_resolution_clock::now();
-        print("-------------------------");
-        print(job.name);
-        for (auto p : p_list)
+        if (cnt % 20 == 0)
         {
-            string new_title = job.name + "_p_" + to_string(p);
-            vector<int> raw_org = job.raw_org;
-            vector<int> raw_dest = job.raw_dest;
+            start2 = chrono::high_resolution_clock::now();
+            print("-------------------------");
+            print(job.name);
+        }
+        // p = job.p;
+        p = 1;
 
-            Mip_result mip_result = run_mip(raw_org, raw_dest, p, B);
-            // type = 0;
-            // run(new_title, config, mip_result, raw_org, raw_dest, mip_result.h_list, p, B, type, iter);
-            // type = 1;
-            vector<int> h_list;
-            // for (size_t i = 0; i < raw_org.size(); ++i)
-            // {
-            //     if (raw_org[i] == 0 || raw_dest[i] == 0)
-            //         h_list.push_back(B);
-            //     else
-            //         h_list.push_back(0);
-            // }
-            // run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, iter);
+        string new_title = job.name + "_p_" + to_string(p);
+        vector<int> raw_org = {0, 0,  14, 19, 31, 0, 38, 0,  15, 23, 1,  0,  25, 0,  41, 0,  0,
+                               8, 0,  36, 41, 9,  0, 37, 41, 31, 0,  29, 30, 0,  0,  0,  41, 26,
+                               0, 41, 41, 12, 30, 6, 19, 18, 30, 0,  20, 0,  0,  13, 0,  31};
+        vector<int> raw_dest = {20, 24, 0,  0,  0, 21, 41, 11, 0,  0,  0,  21, 41, 5,  31, 31, 9,
+                                0,  22, 0,  26, 0, 38, 0,  18, 41, 2,  0,  0,  34, 14, 22, 28, 0,
+                                27, 6,  18, 0,  0, 0,  0,  41, 0,  17, 41, 15, 37, 0,  2,  41};
 
+        Mip_result mip_result = run_mip(raw_org, raw_dest, p, B);
+        print("DSAAD");
+        vector<int> h_list = {41, 41, 41, 41, 41, 41, 30, 41, 41, 41, 37, 41, 0, 41, 16, 13, 41,
+                              41, 41, 3,  0,  41, 1,  1,  0,  16, 41, 21, 2,  2, 41, 41, 16, 41,
+                              1,  0,  0,  41, 21, 41, 41, 0,  1,  41, 0,  41, 3, 41, 41, 16};
+        type = 0;
+        run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, iter);
+        type = 1;
+        // vector<int> h_list;
+        for (size_t i = 0; i < raw_org.size(); ++i)
+        {
+            if (raw_org[i] == 0 || raw_dest[i] == 0)
+                h_list.push_back(B);
+            else
+                h_list.push_back(0);
+        }
+        run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, iter);
+
+        int best_h = job.best_h;
+        if (best_h == 0)
+        {
             type = 3;
-            int best_h = 0, best_v = 99999, tmp;
-            for (int i = 0; i < 21; i++)
+            int best_v = 99999, tmp;
+            for (int i = 0; i < 20; i++)
             {
                 h_list = vector(raw_dest.size(), i + 7);
                 tmp = run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, 20, i + 7);
                 if (tmp < best_v)
                 {
                     best_v = tmp;
-                    best_h = i;
+                    best_h = i + 7;
                 }
             }
-
-            type = 2;
-            h_list = vector(raw_dest.size(), best_h + 7);
-            run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, iter, best_h + 7);
         }
-        auto end = chrono::high_resolution_clock::now();
-        chrono::duration<double> elapsed = end - start2;
-        std::cout << setprecision(2) << elapsed.count() << " seconds\n";
+
+        type = 2;
+        h_list = vector(raw_dest.size(), best_h);
+        run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, iter, best_h);
+        if (cnt % 20 == 0)
+        {
+            auto end = chrono::high_resolution_clock::now();
+            chrono::duration<double> elapsed = end - start2;
+            std::cout << setprecision(2) << elapsed.count() << " seconds\n";
+        }
     }
     auto end = chrono::high_resolution_clock::now();
     chrono::duration<double> elapsed = end - start;

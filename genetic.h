@@ -1,5 +1,6 @@
 // genetic.h
 #pragma once
+#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -95,4 +96,4 @@ void print(const T& t, const Args&... args)
     print(args...);
 }
 
-void print_vector(vector<int>& vec);
+void print_vector(const vector<int>& vec);

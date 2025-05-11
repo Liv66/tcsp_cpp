@@ -14,6 +14,8 @@ struct JobInstance
     std::string name;
     std::vector<int> raw_org;
     std::vector<int> raw_dest;
+    int p;
+    int best_h;
 };
 
 vector<int> parse_csv_list(const std::string& s);

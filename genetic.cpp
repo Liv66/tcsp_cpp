@@ -34,7 +34,7 @@ vector<int> g_crane_pt;
 vector<int> g_crane_job_num;
 }  // namespace
 
-void print_vector(vector<int>& vec)
+void print_vector(const vector<int>& vec)
 {
     std::cout << "[";
     for (size_t i = 0; i < vec.size(); ++i)
