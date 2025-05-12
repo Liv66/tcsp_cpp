@@ -66,12 +66,10 @@ int run(const string& new_title, const GAConfig& config, const Mip_result& mip_r
                                 ga_result.et2,      ga_result.pt2, ga_result.wt2,  ga_result.num_handover,
                                 ga_result.time,     type,          h_location};
 
-        print(ga_result.makespan);
-
-        // append_result_to_csv("results3.csv", row_result);
+        append_result_to_csv("results3.csv", row_result);
         acc += ga_result.makespan;
     }
-    abort();
+
     return acc / iter;
 }
 
@@ -87,6 +85,7 @@ int main()
     int iter = 50;
     int p = 0;
     int type, cnt = 0;
+    int flag = 1;
     auto start2 = chrono::high_resolution_clock::now();
     for (const auto& job : instances)
     {
@@ -96,26 +95,25 @@ int main()
             print("-------------------------");
             print(job.name);
         }
-        // p = job.p;
-        p = 1;
+        p = job.p;
 
         string new_title = job.name + "_p_" + to_string(p);
-        vector<int> raw_org = {0, 0,  14, 19, 31, 0, 38, 0,  15, 23, 1,  0,  25, 0,  41, 0,  0,
-                               8, 0,  36, 41, 9,  0, 37, 41, 31, 0,  29, 30, 0,  0,  0,  41, 26,
-                               0, 41, 41, 12, 30, 6, 19, 18, 30, 0,  20, 0,  0,  13, 0,  31};
-        vector<int> raw_dest = {20, 24, 0,  0,  0, 21, 41, 11, 0,  0,  0,  21, 41, 5,  31, 31, 9,
-                                0,  22, 0,  26, 0, 38, 0,  18, 41, 2,  0,  0,  34, 14, 22, 28, 0,
-                                27, 6,  18, 0,  0, 0,  0,  41, 0,  17, 41, 15, 37, 0,  2,  41};
+        if (new_title == "N_10_PL_0.5_R_0.75_V_12_p_5")
+        {
+            flag = 0;
+        }
+
+        if (flag)
+            continue;
+        vector<int> raw_org = job.raw_org;
+        vector<int> raw_dest = job.raw_dest;
 
         Mip_result mip_result = run_mip(raw_org, raw_dest, p, B);
-        print("DSAAD");
-        vector<int> h_list = {41, 41, 41, 41, 41, 41, 30, 41, 41, 41, 37, 41, 0, 41, 16, 13, 41,
-                              41, 41, 3,  0,  41, 1,  1,  0,  16, 41, 21, 2,  2, 41, 41, 16, 41,
-                              1,  0,  0,  41, 21, 41, 41, 0,  1,  41, 0,  41, 3, 41, 41, 16};
+
         type = 0;
-        run(new_title, config, mip_result, raw_org, raw_dest, h_list, p, B, type, iter);
+        run(new_title, config, mip_result, raw_org, raw_dest, mip_result.h_list, p, B, type, iter);
         type = 1;
-        // vector<int> h_list;
+        vector<int> h_list;
         for (size_t i = 0; i < raw_org.size(); ++i)
         {
             if (raw_org[i] == 0 || raw_dest[i] == 0)
